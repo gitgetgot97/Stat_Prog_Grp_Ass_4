@@ -16,6 +16,73 @@
 
 ###############################################################################
 
+## Test Function rb
+
+rb <- function(th,k=2) {
+k*(th[2]-th[1]^2)^2 + (1-th[1])^2
+}
+
+th <- c(2,1)
+
+rb(th)
+
+## gb returns the gradient of rb
+gb <- function(th,k=2) {
+c(-2*(1-th[1])-k*4*th[1]*(th[2]-th[1]^2),k*2*(th[2]-th[1]^2))
+}
+
+gb(th)
+
+## hb returns the hessian of hb
+hb <- function(th,k=2) {
+h <- matrix(0,2,2)
+h[1,1] <- 2-k*2*(2*(th[2]-th[1]^2) - 4*th[1]^2)
+h[2,2] <- 2*k
+h[1,2] <- h[2,1] <- -4*k*th[1]
+h
+}
+
+hb(th)
+
+
+
+## SJ: Trying to create grad and hess functions
+## For reference: there is package for this, but can't use it, because not in base R
+## https://cran.r-project.org/web/packages/EKMCMC/index.html
+
+rb <- function(th,k=2) {
+  k*(th[2]-th[1]^2)^2 + (1-th[1])^2
+}
+
+## Check the function for different theta vectors
+th <- c(2,1)
+th_1 <- c(4,1)
+rb(th); rb(th_1)
+
+## Want to differentiate rb wrt th[1] and th[2], grad is a vector of these. hess is the second partial derivatives
+
+deriv(rb(th), "th[1]")           ## these aren't working as I would expect. says grad = 0.
+deriv(rb(th), "th[2]")
+deriv(rb(th_1), "th[1]")
+eval(deriv(rb(th_1), "th[1]"))
+
+gb(th); gb(th_1)
+hb(th); hb(th_1)
+
+
+# A more simple example in one variable
+f = expression(x^2 + 5*x + 4)
+deriv(f, 'x')                                    ## QUESSTION: WE WANT .grad[,'x'] from here - how do we access it??
+x <- 1
+eval(f)   ## eval function to find the value at a given x
+eval(deriv(f,'x'))  
+deriv(deriv(f,'x'),'x')
+
+## Have a good weekend both!
+## Scott
+
+
+
 newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.half=20,eps=1e-6){
   
 }## End of newt function
