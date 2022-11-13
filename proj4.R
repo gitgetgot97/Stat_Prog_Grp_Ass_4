@@ -114,6 +114,11 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1e-8,maxit=100,max
       ## if the updated theta gives a worse objective value, add delta/2
       ## divide delta by 2 repeatedly until a better objective is foun
       temp_theta <- theta + delta*(1/2 ^ half_iter)
+      if(abs(func(temp_theta,...)) == Inf){
+        ## if the new half-step returns a non-finite value, reset temp_theta to its previous value
+        ## this will simply move to the next half-step
+        temp_theta <- theta + delta*(1/2 ^ (half_iter - 1))
+      }
       half_iter <- half_iter + 1
     }
     
@@ -131,23 +136,17 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1e-8,maxit=100,max
   
   R <- chol(hess0)
   Hi <- chol2inv(R)
+  if(inherits(try(chol(hess0),silent = TRUE), "try-error")){
+    warning("Hessian at minimum is not positive definite")
+  }
   output <- list(theta = theta, f=f, iter=iter, g=g, Hi=Hi)
   return(output) 
 }## End of newt function
 
 
-pd_hess <- function(hessian, I){
-  ## this function takes a hessian matrix and checks if it is positive definite
-  ## by attempting a Cholesky decomposition.
-  ## if it is not positive definite it adds identity matrices to it until it is
-  while(inherits(try(chol(hessian),silent = TRUE), "try-error")){
-    hessian <- hessian + I
-  }
-  return(hessian)
-}
-
 
 trial <- newt(th, rb, gb, hess=hb)
+
 
 
 
