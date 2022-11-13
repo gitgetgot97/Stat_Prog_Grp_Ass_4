@@ -62,7 +62,7 @@ hb(th); hb(th_1)
 
 
 
-newt<- function(theta,func,grad,hess=NULL,...,tol=1e-16,fscale=1,maxit=100,max.half=20,eps=1e-6){
+newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1e-8,maxit=100,max.half=20,eps=1e-6){
   ## theta is a vector of initial values for the optimization parameters.
   ## func is the objective function to minimize. Its first argument is the vector of optimization parameters. 
   ## Remaining arguments will be passed from newt using '...'.
@@ -86,27 +86,34 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-16,fscale=1,maxit=100,max.h
   ## g the gradient vector at the minimum (so the user can judge closeness to numerical zero).
   ## Hi the inverse of the Hessian matrix at the minimum (useful if the objective is a negative log likelihood).
   
-  iter <- 0
-  g <- grad(theta, ...)
-  hess0 <- hess(theta, ...)
+  iter <- 0 ## initialise count of number of iterations
+  g <- grad(theta, ...) ## calculate the gradient vector for initial guess
+  hess0 <- hess(theta, ...) ## calculate hessian matrix for initial guess
+  I <- diag(length(theta)) ## create appropriately sized identity to add to hessian if it is not positive definite
+  
   
   while(iter <= maxit 
         & abs(max(grad(theta, ...))) > (tol*abs(func(theta,...)))+fscale){
+    ## execute an iteration of Newton's method if we have not reached the maximum number of iterations
+    ## and if the gradient of the objective is above the tolerance level
+    hess0 <- pd_hess(hess0, I) ## check that the hessian is positive definite, peturb it to be so if it is not
+    R <- chol(hess0) ## Cholesky decomposition of the hessian
+    hess_inv<-chol2inv(R) ## use the decomposition to calculate the inverse
     
-    R <- chol(hess0)
-    id <- diag(length(theta))
-    hess_inv<-chol2inv(R)
-    
-    delta <- -(hess_inv)%*%g
-    temp_theta <- theta + delta
-    half_iter <- 1
+    delta <- -(hess_inv)%*%g ## find the delta that minimises the quadratic approximation
+    temp_theta <- theta + delta ## store current guess for theta + delta
+    half_iter <- 1 ## initialise count for the number of half steps used
     
     while(func(theta, ...) < func(temp_theta, ...) & half_iter <= max.half){
+      ## If our initial guess is far from the objective, we may overshoot
+      ## if the updated theta gives a worse objective value, add delta/2
+      ## divide delta by 2 repeatedly until a better objective is foun
       temp_theta <- theta + delta*(1/2 ^ half_iter)
       half_iter <- half_iter + 1
     }
     
     if(half_iter == max.half){
+      ## alert user that the maximum number of half step were used
       warning("Max half steps reached")
     }
     
@@ -122,6 +129,17 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-16,fscale=1,maxit=100,max.h
   output <- list(theta = theta, f=f, iter=iter, g=g, Hi=Hi)
   return(output) 
 }## End of newt function
+
+
+pd_hess <- function(hessian, I){
+  ## this function takes a hessian matrix and checks if it is positive definite
+  ## by attempting a Cholesky decomposition.
+  ## if it is not positive definite it adds identity matrices to it until it is
+  while(inherits(try(chol(hess0),silent = TRUE), "try-error")){
+    hessian <- hessian + I
+  }
+  return(hessian)
+}
 
 
 trial <- newt(th, rb, gb, hess=hb)
