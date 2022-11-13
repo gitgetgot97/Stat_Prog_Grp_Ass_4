@@ -96,7 +96,12 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1e-8,maxit=100,max
         & abs(max(grad(theta, ...))) > (tol*abs(func(theta,...)))+fscale){
     ## execute an iteration of Newton's method if we have not reached the maximum number of iterations
     ## and if the gradient of the objective is above the tolerance level
-    hess0 <- pd_hess(hess0, I) ## check that the hessian is positive definite, peturb it to be so if it is not
+    
+    while(inherits(try(chol(hess0),silent = TRUE), "try-error")){
+      ## check if the hessian is positive definite by attempting a Cholesky decomposition
+      ## if it is not positive definite add identity matrices to it until it is
+      hess0 <- hess0 + I
+    }
     R <- chol(hess0) ## Cholesky decomposition of the hessian
     hess_inv<-chol2inv(R) ## use the decomposition to calculate the inverse
     
@@ -135,7 +140,7 @@ pd_hess <- function(hessian, I){
   ## this function takes a hessian matrix and checks if it is positive definite
   ## by attempting a Cholesky decomposition.
   ## if it is not positive definite it adds identity matrices to it until it is
-  while(inherits(try(chol(hess0),silent = TRUE), "try-error")){
+  while(inherits(try(chol(hessian),silent = TRUE), "try-error")){
     hessian <- hessian + I
   }
   return(hessian)
