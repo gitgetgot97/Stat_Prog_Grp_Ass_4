@@ -62,7 +62,7 @@ hb(th); hb(th_1)
 
 
 
-newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1e-8,maxit=100,max.half=20,eps=1e-6){
+newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.half=20,eps=1e-6){
   ## theta is a vector of initial values for the optimization parameters.
   ## func is the objective function to minimize. Its first argument is the vector of optimization parameters. 
   ## Remaining arguments will be passed from newt using '...'.
@@ -93,15 +93,18 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1e-8,maxit=100,max
   
   
   while(iter <= maxit 
-        & abs(max(grad(theta, ...))) > (tol*abs(func(theta,...)))+fscale){
+        & abs(max(grad(theta, ...))) > (tol*(abs(func(theta,...))+fscale))){
     ## execute an iteration of Newton's method if we have not reached the maximum number of iterations
     ## and if the gradient of the objective is above the tolerance level
     
-    while(inherits(try(chol(hess0),silent = TRUE), "try-error")){
+    mult = 1e-8 ## initial multiple of identity to add to non-positive definite hessian
+    while(inherits(try(chol(hess0),silent = TRUE), "try-error") & mult < 10){
       ## check if the hessian is positive definite by attempting a Cholesky decomposition
       ## if it is not positive definite add identity matrices to it until it is
-      hess0 <- hess0 + I
+      hess0 <- hess0 + mult*I
+      mult <- 10*mult
     }
+    
     R <- chol(hess0) ## Cholesky decomposition of the hessian
     hess_inv<-chol2inv(R) ## use the decomposition to calculate the inverse
     
