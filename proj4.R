@@ -59,7 +59,20 @@ rb(th); rb(th_1)
 gb(th); gb(th_1)
 hb(th); hb(th_1)
 
-
+finite_diff <- function(theta, grad, eps, ...){
+  grad_0 <- grad(theta, ...)
+  Hfd = matrix(0, length(theta), length(theta))
+  
+  for(i in 1:length(theta)){
+    
+    th1 <- theta; th1[i] <- th1[i] + eps
+    grad_1 <- grad(th1, ...)
+    Hfd[i,] <- (grad_1 - grad_0)/eps
+  }
+  
+  return (t(Hfd) + Hfd)/2
+  
+}
 
 
 newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.half=20,eps=1e-6){
@@ -88,7 +101,17 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
   
   iter <- 0 ## initialise count of number of iterations
   g <- grad(theta, ...) ## calculate the gradient vector for initial guess
-  hess0 <- hess(theta, ...) ## calculate hessian matrix for initial guess
+  
+  if(!is.finite(func(theta...)) | sum(is.finite(grad(theta,...))) < length(theta)){
+   stop("Objective or derivative infinite at initial theta, please enter a different theta.") 
+  }
+  
+  
+  if(!is.null(hess)){
+    hess0 <- hess(theta, ...) ## calculate hessian matrix for initial guess
+  }else{
+    hess0 <- finite_diff(theta, grad,eps,...)
+  }
   I <- diag(length(theta)) ## create appropriately sized identity to add to hessian if it is not positive definite
   
   
@@ -133,14 +156,20 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
     theta <- temp_theta
     f <- func(theta, ...)
     g <- grad(theta, ...)
-    hess0 <- hess(theta, ...)
+    
+    if(!is.null(hess)){
+      hess0 <- hess(theta, ...)
+    }else{
+      hess0 <- finite_diff(theta, grad, eps, ...)
+    }
     iter <- iter + 1
   }
   
-  R <- chol(hess0)
-  Hi <- chol2inv(R)
+  R <- try(chol(hess0))
+  Hi <- try(chol2inv(R))
   if(inherits(try(chol(hess0),silent = TRUE), "try-error")){
     warning("Hessian at minimum is not positive definite")
+    Hi = NULL
   }
   output <- list(theta = theta, f=f, iter=iter, g=g, Hi=Hi)
   return(output) 
@@ -148,9 +177,14 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
 
 
 
-trial <- newt(th, rb, gb, hess=hb)
+trial <- newt(th, rb, gb)
 
 
 
 
+vec <- c(10, 12, NaN, NULL)
+if(is.finite(vec)){
+  print("ooo")
+}
 
+sum(is.finite(vec))
