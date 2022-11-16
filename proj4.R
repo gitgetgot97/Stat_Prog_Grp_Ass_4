@@ -14,52 +14,11 @@
 ## This programme contains an R function, newt, implementing Newton's method for
 ## minimization of functions.
 
-###############################################################################
-
-## Test Function rb
-
-rb <- function(th,k=2) {
-k*(th[2]-th[1]^2)^2 + (1-th[1])^2
-}
-
-th <- c(100,200)
-
-rb(th)
-
-## gb returns the gradient of rb
-gb <- function(th,k=2) {
-c(-2*(1-th[1])-k*4*th[1]*(th[2]-th[1]^2),k*2*(th[2]-th[1]^2))
-}
-
-gb(th)
-
-## hb returns the hessian of hb
-hb <- function(th,k=2) {
-h <- matrix(0,2,2)
-h[1,1] <- 2-k*2*(2*(th[2]-th[1]^2) - 4*th[1]^2)
-h[2,2] <- 2*k
-h[1,2] <- h[2,1] <- -4*k*th[1]
-h
-}
-
-hb(th)
-
-
-
-rb <- function(th,k=2) {
-  k*(th[2]-th[1]^2)^2 + (1-th[1])^2
-}
-
-## Check the function for different theta vectors
-th <- c(2,1)
-th_1 <- c(4,1)
-rb(th); rb(th_1)
-
-
-gb(th); gb(th_1)
-hb(th); hb(th_1)
+##############################################################################
 
 finite_diff <- function(theta, grad, eps, ...){
+  ## comment what this function does...
+  ## Produces the hessian if user does not provide
   grad_0 <- grad(theta, ...)
   Hfd = matrix(0, length(theta), length(theta))
   
@@ -69,10 +28,8 @@ finite_diff <- function(theta, grad, eps, ...){
     grad_1 <- grad(th1, ...)
     Hfd[i,] <- (grad_1 - grad_0)/eps
   }
-  
   return (t(Hfd) + Hfd)/2
-  
-}
+} ## end of finite_diff function
 
 
 newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.half=20,eps=1e-6){
@@ -102,7 +59,7 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
   iter <- 0 ## initialise count of number of iterations
   g <- grad(theta, ...) ## calculate the gradient vector for initial guess
   
-  if(!is.finite(func(theta...)) | sum(is.finite(grad(theta,...))) < length(theta)){
+  if(!is.finite(func(theta, ...)) | sum(is.finite(grad(theta,...))) < length(theta)){
    stop("Objective or derivative infinite at initial theta, please enter a different theta.") 
   }
   
@@ -115,13 +72,13 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
   I <- diag(length(theta)) ## create appropriately sized identity to add to hessian if it is not positive definite
   
   
-  while(iter <= maxit 
+  while(iter < maxit 
         & abs(max(grad(theta, ...))) > (tol*(abs(func(theta,...))+fscale))){
     ## execute an iteration of Newton's method if we have not reached the maximum number of iterations
     ## and if the gradient of the objective is above the tolerance level
     
     mult = 1e-8 ## initial multiple of identity to add to non-positive definite hessian
-    while(inherits(try(chol(hess0),silent = TRUE), "try-error") & mult < 10){
+    while(inherits(try(chol(hess0),silent = TRUE), "try-error")){
       ## check if the hessian is positive definite by attempting a Cholesky decomposition
       ## if it is not positive definite add identity matrices to it until it is
       hess0 <- hess0 + mult*I
@@ -140,7 +97,7 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
       ## if the updated theta gives a worse objective value, add delta/2
       ## divide delta by 2 repeatedly until a better objective is foun
       temp_theta <- theta + delta*(1/2 ^ half_iter)
-      if(abs(func(temp_theta,...)) == Inf){
+      if(is.finite(func(temp_theta,...))){
         ## if the new half-step returns a non-finite value, reset temp_theta to its previous value
         ## this will simply move to the next half-step
         temp_theta <- theta + delta*(1/2 ^ (half_iter - 1))
@@ -150,8 +107,11 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
     
     if(half_iter == max.half){
       ## alert user that the maximum number of half step were used
-      warning("Max half steps reached")
+      warning("Max half steps reached without improving objective. Return most recent output.")
+      ## break out of the larger while loop - objective won't be improved further
+      break
     }
+    
     
     theta <- temp_theta
     f <- func(theta, ...)
@@ -163,10 +123,16 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
       hess0 <- finite_diff(theta, grad, eps, ...)
     }
     iter <- iter + 1
+  } ## End of outer while loop
+  
+  
+  if(iter == maxit){
+    ## alert user that the maximum number of iterations has been reached without convergence
+    warning("Max iterations reached without convergence. Return most recent output.")
   }
   
-  R <- try(chol(hess0))
-  Hi <- try(chol2inv(R))
+  R <- try(chol(hess0), silent=TRUE)
+  Hi <- try(chol2inv(R), silent=TRUE)
   if(inherits(try(chol(hess0),silent = TRUE), "try-error")){
     warning("Hessian at minimum is not positive definite")
     Hi = NULL
@@ -176,15 +142,48 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
 }## End of newt function
 
 
+######################################
+## Testing
+
+rb <- function(th,k=2) {
+  k*(th[2]-th[1]^2)^2 + (1-th[1])^2
+}
+
+## gb returns the gradient of rb
+gb <- function(th,k=2) {
+  c(-2*(1-th[1])-k*4*th[1]*(th[2]-th[1]^2),k*2*(th[2]-th[1]^2))
+}
+
+## hb returns the hessian of hb
+hb <- function(th,k=2) {
+  h <- matrix(0,2,2)
+  h[1,1] <- 2-k*2*(2*(th[2]-th[1]^2) - 4*th[1]^2)
+  h[2,2] <- 2*k
+  h[1,2] <- h[2,1] <- -4*k*th[1]
+  h
+}
+
+th <- c(10,20)
 
 trial <- newt(th, rb, gb)
 
+#######################################################
+## Another test
 
-
-
-vec <- c(10, 12, NaN, NULL)
-if(is.finite(vec)){
-  print("ooo")
+f3 <- function(x0) {
+  x0^3 - 3*x0^2 + 1 + 100*sin(x0+1)
 }
 
-sum(is.finite(vec))
+f3_prime <- function(x0) {
+  3*x0^2 - 6*x0 + 100*cos(x0+1)
+}
+
+trial <- newt(10, f3, f3_prime)   ## 10 is our initial x0 guess
+
+##################
+## Another test
+
+### ...
+
+## 1) Commenting
+## 2) try test functions for fun. Aim to try a func which warns on half steps and on non finite grad.
