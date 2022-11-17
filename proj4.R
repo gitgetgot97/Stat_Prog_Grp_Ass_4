@@ -58,9 +58,10 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
   
   iter <- 0 ## initialise count of number of iterations
   g <- grad(theta, ...) ## calculate the gradient vector for initial guess
+  f <- func(theta, ...)
   
   if(!is.finite(func(theta, ...)) | sum(is.finite(grad(theta,...))) < length(theta)){
-   stop("Objective or derivative infinite at initial theta, please enter a different theta.") 
+   stop("Objective or derivative in not finite at initial theta, please enter a different theta.") 
   }
   
   
@@ -72,8 +73,7 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
   I <- diag(length(theta)) ## create appropriately sized identity to add to hessian if it is not positive definite
   
   
-  while(iter < maxit 
-        & abs(max(grad(theta, ...))) > (tol*(abs(func(theta,...))+fscale))){
+  while(iter < maxit & abs(max(g)) > (tol*(abs(f+fscale)))){
     ## execute an iteration of Newton's method if we have not reached the maximum number of iterations
     ## and if the gradient of the objective is above the tolerance level
     
@@ -131,6 +131,7 @@ newt<- function(theta,func,grad,hess=NULL,...,tol=1e-8,fscale=1,maxit=100,max.ha
     warning("Max iterations reached without convergence. Return most recent output.")
   }
   
+  
   R <- try(chol(hess0), silent=TRUE)
   Hi <- try(chol2inv(R), silent=TRUE)
   if(inherits(try(chol(hess0),silent = TRUE), "try-error")){
@@ -163,9 +164,9 @@ hb <- function(th,k=2) {
   h
 }
 
-th <- c(10,20)
+th <- c(1,1)
 
-trial <- newt(th, rb, gb)
+trial <- newt(th, rb, gb) ## we need to know what to do when the minimum is entered as a first guess
 
 #######################################################
 ## Another test
@@ -183,7 +184,32 @@ trial <- newt(10, f3, f3_prime)   ## 10 is our initial x0 guess
 ##################
 ## Another test
 
-### ...
+doogle <- function(x, alpha1=3, alpha2=1, alpha3=0.1, alpha4=0.3, alpha5=10){
+  return(alpha1*x[1]^2 + alpha2*x[2]^2 + alpha3*x[3]^2 + alpha4*x[4]^2 + alpha5*x[5]^2)
+}
+
+doogle_diff <- function(x, alpha1=3, alpha2=1, alpha3=0.1, alpha4=0.3, alpha5=10){
+  c(2*alpha1*x[1], 2*alpha2*x[2], 2*alpha3*x[3], 2*alpha4*x[4], 2*alpha5*x[5]^2)
+}
+
+xguess = c(10,10,12,3,12) 
+
+doogle_test <- newt(xguess, doogle, doogle_diff)
+
+###############
+##Another Test
+
+saddle <- function(y){
+  return(y[1]^2 - y[2]^2)
+}
+
+saddle_diff <- function(y){
+  c(2*y[1], 2*y[2])
+}
+
+y_guess <- c(0,0)
+
+saddle_test <- newt(y_guess, saddle, saddle_diff) ### this lands us at a saddle point
 
 ## 1) Commenting
 ## 2) try test functions for fun. Aim to try a func which warns on half steps and on non finite grad.
